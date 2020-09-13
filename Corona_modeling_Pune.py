@@ -144,7 +144,7 @@ if __name__== "__main__":
         for i in range(numWards):
             ward_infected_data = []
             #contact = contact_rate(wards[i],step)
-            contact = contact_rate_r0(wards[i],step)
+            contact = contact_rate(wards[i],step)
             P = transition_probability(contact,wards[i])
             result = wards[i].get_ward_values() * P
             wards[i].set_ward_values(result.tolist()[0])
