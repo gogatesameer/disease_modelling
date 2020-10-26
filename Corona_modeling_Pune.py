@@ -19,15 +19,17 @@ I = 3
 R = 0
 D = 0
 betaOne = 3 # infection rate
-beta = 0.18  # Probability of Infection , Considering Quarantine
-gamma = 0.0 # recovery rate
+beta = 0.18  # Probability of Infection , Considering Quarantine , people measures
+gamma = 0.0 # recovery rate  - Vaccination
 gammaOne = 0.00 ## Recovered to Susceptible
 vaccinated = 0
 numWards = 11
+#responseFactor = 9
 
-r0_lockdown = 1.05
-r0_post_lockdown = 1.1
+r0_lockdown = 2
+r0_post_lockdown = 1.4
 mcmc = 1
+days = 300
 
 labels = [ 'KhadakWasla','Parvati' ,'Kothrud','Kasba Peth','Camp','Wadgaon Sheri','Hadpsar',
            'Bhosari','Pimpri','Chinchwad','Shivaji Nagar']
@@ -72,7 +74,7 @@ def migrate_ward(ward1 ,ward2,step):
             ward2.recovered = ward2.recovered + 1
                 
        
-def contact_rate(w,step):
+def contact_rate(w,step,responseFactor):
     if mcmc:
         count = 0
         #infected = int(beta * infected)
@@ -83,14 +85,14 @@ def contact_rate(w,step):
                 if p <= w.susceptible:
                     count = count + 1
         if step > 75:
-            j = 75*9
+            j = 75*responseFactor
         else:
-            j = step*9
+            j = step*responseFactor
         return  (365 / (365 + j ) ) * beta *count
     else:
         if step < 75:
-            return int(r0_lockdown*w.infected - infected)
-        return (r0_post_lockdown*w.infected- infected)
+            return int((r0_lockdown*w.infected - w.infected)*beta)
+        return int((r0_post_lockdown*w.infected- w.infected)*beta)
 
  
     
@@ -131,7 +133,7 @@ def transition_probability(contact,w):
 
     return P
 
-if __name__== "__main__":
+def iteration(responseFactor):
     wards = []
     for i in range(numWards):
         wards.append(ward(population[i],0))
@@ -140,11 +142,11 @@ if __name__== "__main__":
     
 
     plot_data = []
-    for step in range(300):
+    for step in range(days):
         for i in range(numWards):
             ward_infected_data = []
             #contact = contact_rate(wards[i],step)
-            contact = contact_rate(wards[i],step)
+            contact = contact_rate(wards[i],step,responseFactor)
             P = transition_probability(contact,wards[i])
             result = wards[i].get_ward_values() * P
             wards[i].set_ward_values(result.tolist()[0])
@@ -166,7 +168,7 @@ if __name__== "__main__":
         #print("######################################################")
 
         plot_data.append(np.array(ward_infected_data).flatten())
-        print("Step",step,"Done")
+        #print("Step",step,"Done")
     
         
     plot_data = np.array(plot_data)
@@ -179,16 +181,20 @@ if __name__== "__main__":
         plt.ylabel('Infected Population per ward')
     
     city_sum = []
-    for i in range(300):
+    for i in range(days):
         city_sum.append(sum(plot_data[i]))
         
     plt.figure(2)
-    plt.plot(city_sum,label = "Pune City Numbers")
+    plt.plot(city_sum,label = "Pune City Numbers for reponse " + str(responseFactor))
     plt.legend()
-    plt.xlabel('Time')
+    plt.xlabel('Time - Iteration')
     plt.ylabel('Pune City Infections')
+    plt.show()
     
-        
+    
+if __name__== "__main__":
+    for i in range(5,11):
+        iteration(i)
   
     
     
