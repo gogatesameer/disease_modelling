@@ -14,8 +14,8 @@ import time
 
 
 N = 5290644
-S = N - 3
-I = 3
+S = N - 4
+I = 4
 R = 0
 D = 0
 betaOne = 3 # infection rate
@@ -30,6 +30,7 @@ r0_lockdown = 2
 r0_post_lockdown = 1.4
 mcmc = 1
 days = 300
+sigma = 2
 
 labels = [ 'KhadakWasla','Parvati' ,'Kothrud','Kasba Peth','Camp','Wadgaon Sheri','Hadpsar',
            'Bhosari','Pimpri','Chinchwad','Shivaji Nagar']
@@ -41,18 +42,20 @@ class ward(object):
     def __init__(self,total=500000,infected=0):
         self.total = total
         self.susceptible = total
-        self.infected = infected
+        self.exposed = infected
+        self.infected = 0
         self.died = 0
         self.recovered = 0
     
     def set_ward_values(self,result):
         self.susceptible = result[0]
-        self.infected = result[1]
-        self.died = result[2]
-        self.recovered = result[3]
+        self.exposed = result[1]
+        self.infected = result[2]
+        self.died = result[3]
+        self.recovered = result[4]
         
     def get_ward_values(self):
-        p = list((self.susceptible,self.infected,self.died,self.recovered))
+        p = list((self.susceptible,self.exposed,self.infected,self.died,self.recovered))
         int_values = [int(i) for i in p]
         return int_values
 
@@ -99,16 +102,27 @@ def contact_rate(w,step,responseFactor):
 def transition_probability(contact,w):
     global vaccinated
     #tranistion from Susceptible
-    prob_s_i = contact / (w.susceptible +1)
+    prob_s_e = contact / (w.susceptible +1)
+    prob_s_i = 0
     prob_s_r = gamma 
     if prob_s_i > 1:
         prob_s_i = 1 - gamma
         
-    prob_s_s = 1 - (prob_s_i + prob_s_r)
+    prob_s_s = 1 - (prob_s_e + prob_s_r)
     prob_s_d = 0
+    
+    prob_e_i = 1/sigma
+    prob_e_s = 0
+    prob_e_e = 0
+    prob_e_d = 0
+    prob_e_r = 0
+    
+    
+
     
     #transition from Infected
     prob_i_d = 0.003
+    prob_i_e = 0
     prob_i_r = 0.14
     prob_i_s = 0
     prob_i_i = 1 - (prob_i_d + prob_i_r)
@@ -119,16 +133,18 @@ def transition_probability(contact,w):
     prob_r_r = 1 - prob_r_s
     prob_r_i = 0
     prob_r_d = 0
+    prob_r_e = 0
     
     #All probabbility from D state are 0 except D2D
     prob_d_d = 1
-    prob_d_i = prob_d_r = prob_d_s = 0
+    prob_d_i = prob_d_r = prob_d_s = prob_d_e = 0
     
     ## Build transition probability matrix
-    P = np.matrix([[prob_s_s,prob_s_i,prob_s_d,prob_s_r],
-                   [prob_i_s,prob_i_i,prob_i_d,prob_i_r],
-                   [0.,0.,1.0,0.],
-                   [prob_r_s,0.,0.,prob_r_r]])
+    P = np.matrix([[prob_s_s,prob_s_e,prob_s_i,prob_s_d,prob_s_r],
+                   [prob_e_s,prob_e_e,prob_e_i,prob_e_d,prob_e_r],
+                   [prob_i_s,prob_i_e,prob_i_i,prob_i_d,prob_i_r],
+                   [0.,0.,0.,1.0,0.],
+                   [prob_r_s,0.,0.,0.,prob_r_r]])
     vaccinated = vaccinated + prob_s_r * w.susceptible
 
     return P
@@ -137,8 +153,8 @@ def iteration(responseFactor):
     wards = []
     for i in range(numWards):
         wards.append(ward(population[i],0))
-    wards[3].infected = 10
-    wards[5].infected = 10
+    wards[3].exposed = 10
+    wards[5].exposed = 10
     
 
     plot_data = []
@@ -193,7 +209,7 @@ def iteration(responseFactor):
     
     
 if __name__== "__main__":
-    for i in range(5,11):
+    for i in range(9,10):
         iteration(i)
   
     
