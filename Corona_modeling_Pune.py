@@ -29,7 +29,7 @@ numWards = 11
 r0_lockdown = 2
 r0_post_lockdown = 1.4
 mcmc = 1
-days = 300
+days = 100
 sigma = 2
 
 labels = [ 'KhadakWasla','Parvati' ,'Kothrud','Kasba Peth','Camp','Wadgaon Sheri','Hadpsar',
@@ -66,13 +66,16 @@ def migrate_ward(ward1 ,ward2,step):
         movements = 5000 + step*100
     for i in range(movements):
         j = random.randint(1,ward1.total)
-        if j < ward1.infected:
+        if j < ward1.exposed:
+            ward1.exposed = ward1.exposed - 1
+            ward2.exposed = ward2.exposed + 1
+        elif j > ward1.exposed and (j < ward1.exposed +  ward1.infected):
             ward1.infected = ward1.infected - 1
             ward2.infected = ward2.infected + 1
-        elif j > ward1.infected and (j < ward1.infected + ward1.susceptible):
+        elif j > ward1.infected + ward1.exposed and (j < ward1.infected + ward1.susceptible + ward1.exposed):
             ward1.susceptible = ward1.susceptible - 1
             ward2.susceptible = ward2.susceptible + 1
-        elif j > ward1.infected + ward1.susceptible and (j < ward1.infected + ward1.susceptible + ward1.recovered):
+        elif j > ward1.infected + ward1.susceptible + ward1.exposed and (j < ward1.exposed + ward1.infected + ward1.susceptible + ward1.recovered):
             ward1.recovered = ward1.recovered - 1
             ward2.recovered = ward2.recovered + 1
                 
@@ -82,11 +85,12 @@ def contact_rate(w,step,responseFactor):
         count = 0
         #infected = int(beta * infected)
         q = random.randint(0,1)
-        for j in range(int(w.infected)):
+        for j in range(int(2*w.exposed+w.infected)):
             for i in range(betaOne-q):
                 p = random.randint(1,w.total)
                 if p <= w.susceptible:
                     count = count + 1
+        print(count)
         if step > 75:
             j = 75*responseFactor
         else:
@@ -94,8 +98,8 @@ def contact_rate(w,step,responseFactor):
         return  (365 / (365 + j ) ) * beta *count
     else:
         if step < 75:
-            return int((r0_lockdown*w.infected - w.infected)*beta)
-        return int((r0_post_lockdown*w.infected- w.infected)*beta)
+            return int(r0_lockdown*((w.exposed + w.infected) - (w.exposed+w.infected))*beta)
+        return int(r0_post_lockdown*((w.exposed + w.infected) - (w.exposed+w.infected))*beta)
 
  
     
@@ -103,6 +107,7 @@ def transition_probability(contact,w):
     global vaccinated
     #tranistion from Susceptible
     prob_s_e = contact / (w.susceptible +1)
+    print(prob_s_e)
     prob_s_i = 0
     prob_s_r = gamma 
     if prob_s_i > 1:
