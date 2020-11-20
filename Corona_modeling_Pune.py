@@ -1,4 +1,5 @@
 
+
 # -*- coding: utf-8 -*-
 """
 Created on Sat Nov 16 18:40:24 2019
@@ -19,7 +20,7 @@ I = 4
 R = 0
 D = 0
 betaOne = 3 # infection rate
-beta = 0.18  # Probability of Infection , Considering Quarantine , people measures
+beta = 0.28  # Probability of Infection , Considering Quarantine , people measures
 gamma = 0.0 # recovery rate  - Vaccination
 gammaOne = 0.00 ## Recovered to Susceptible
 vaccinated = 0
@@ -29,8 +30,8 @@ numWards = 11
 r0_lockdown = 2
 r0_post_lockdown = 1.4
 mcmc = 1
-days = 100
-sigma = 2
+days = 300
+sigma = 1.5
 
 labels = [ 'KhadakWasla','Parvati' ,'Kothrud','Kasba Peth','Camp','Wadgaon Sheri','Hadpsar',
            'Bhosari','Pimpri','Chinchwad','Shivaji Nagar']
@@ -83,23 +84,26 @@ def migrate_ward(ward1 ,ward2,step):
 def contact_rate(w,step,responseFactor):
     if mcmc:
         count = 0
+        print(w.infected)
+
         #infected = int(beta * infected)
         q = random.randint(0,1)
-        for j in range(int(2*w.exposed+w.infected)):
+        for j in range(int(w.infected)):
             for i in range(betaOne-q):
                 p = random.randint(1,w.total)
                 if p <= w.susceptible:
                     count = count + 1
-        print(count)
         if step > 75:
             j = 75*responseFactor
         else:
             j = step*responseFactor
         return  (365 / (365 + j ) ) * beta *count
     else:
+        print(w.infected)
+
         if step < 75:
-            return int(r0_lockdown*((w.exposed + w.infected) - (w.exposed+w.infected))*beta)
-        return int(r0_post_lockdown*((w.exposed + w.infected) - (w.exposed+w.infected))*beta)
+            return int(r0_lockdown*w.infected*beta)
+        return int(r0_post_lockdown* w.infected*beta)
 
  
     
@@ -158,8 +162,8 @@ def iteration(responseFactor):
     wards = []
     for i in range(numWards):
         wards.append(ward(population[i],0))
-    wards[3].exposed = 10
-    wards[5].exposed = 10
+    wards[3].infected = 10
+    wards[5].infected = 10
     
 
     plot_data = []
