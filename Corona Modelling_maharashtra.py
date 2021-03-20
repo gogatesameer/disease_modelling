@@ -135,7 +135,7 @@ def transition_probability(contact,w):
 def iteration(responseFactor):
     wards = []
     for i in range(numDistricts):
-        wards.append(ward(population[i],0))
+        wards.append(district(population[i],0))
     wards[3].infected = 10
     wards[5].infected = 10
     
