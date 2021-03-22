@@ -1,6 +1,9 @@
+
+
 # -*- coding: utf-8 -*-
 """
 Created on Sat Nov 16 18:40:24 2019
+
 @author: Sameer
 """
 import numpy as np
@@ -9,17 +12,15 @@ from matplotlib import pyplot
 import matplotlib.pylab as plt
 import random
 import time
-import xlwt
-from xlwt import Workbook
 
 
 N = 5290644
-S = N - 3
-I = 3
+S = N - 4
+I = 4
 R = 0
 D = 0
 betaOne = 3 # infection rate
-beta = 0.17 # Probability of Infection , Considering Quarantine , people measures
+beta = 0.28  # Probability of Infection , Considering Quarantine , people measures
 gamma = 0.0 # recovery rate  - Vaccination
 gammaOne = 0.00 ## Recovered to Susceptible
 vaccinated = 0
@@ -29,26 +30,29 @@ numDistricts = 35
 r0_lockdown = 2
 r0_post_lockdown = 1.4
 mcmc = 1
-days = 400
+days = 300
+sigma = 1.5
 
 labels = ['Thane','Pune','Mumbai Suburban','Nashik','Nagpur','Ahmadnagar','Solapur','Jalgaon','Kolhapur','Aurangabad','Nanded','Mumbai City','Satara','Amravati','Sangli','Yavatmal','Raigarh','Buldana','Bid','Latur','Chandrapur','Dhule','Jalna','Parbhani','Akola','Osmanabad','Nandurbar','Ratnagiri','Gondiya','Wardha','Bhandara','Washim','Hingoli','Gadchiroli','Sindhudurg']
 
 population =[11060148,9429408,9356962,6107187,4653570,4543159,4317756,4229917,3876001,3701282,3361292,3085411,3003741,2888445,2822143,2772348,2634200,2586258,2585049,2454196,2204307,2050862,1959046,1836086,1813906,1657576,1648295,1615069,1322507,1300774,1200334,1197160,1177345,1072942,849651]
 
 
-class district(object):
+class ward(object):
     def __init__(self,total=500000,infected=0):
         self.total = total
         self.susceptible = total
-        self.infected = infected
+        self.exposed = infected
+        self.infected = 0
         self.died = 0
         self.recovered = 0
     
     def set_ward_values(self,result):
         self.susceptible = result[0]
-        self.infected = result[1]
-        self.died = result[2]
-        self.recovered = result[3]
+        self.exposed = result[1]
+        self.infected = result[2]
+        self.died = result[3]
+        self.recovered = result[4]
         
     def get_ward_values(self):
         p = list((self.susceptible,self.exposed,self.infected,self.died,self.recovered))
@@ -62,13 +66,16 @@ def migrate_ward(ward1 ,ward2,step):
         movements = 5000 + step*100
     for i in range(movements):
         j = random.randint(1,ward1.total)
-        if j < ward1.infected:
+        if j < ward1.exposed:
+            ward1.exposed = ward1.exposed - 1
+            ward2.exposed = ward2.exposed + 1
+        elif j > ward1.exposed and (j < ward1.exposed +  ward1.infected):
             ward1.infected = ward1.infected - 1
             ward2.infected = ward2.infected + 1
-        elif j > ward1.infected and (j < ward1.infected + ward1.susceptible):
+        elif j > ward1.infected + ward1.exposed and (j < ward1.infected + ward1.susceptible + ward1.exposed):
             ward1.susceptible = ward1.susceptible - 1
             ward2.susceptible = ward2.susceptible + 1
-        elif j > ward1.infected + ward1.susceptible and (j < ward1.infected + ward1.susceptible + ward1.recovered):
+        elif j > ward1.infected + ward1.susceptible + ward1.exposed and (j < ward1.exposed + ward1.infected + ward1.susceptible + ward1.recovered):
             ward1.recovered = ward1.recovered - 1
             ward2.recovered = ward2.recovered + 1
                 
@@ -76,6 +83,8 @@ def migrate_ward(ward1 ,ward2,step):
 def contact_rate(w,step,responseFactor):
     if mcmc:
         count = 0
+        #print(w.infected)
+
         #infected = int(beta * infected)
         q = random.randint(0,1)
         for j in range(int(w.infected)):
@@ -89,45 +98,61 @@ def contact_rate(w,step,responseFactor):
             j = step*responseFactor
         return  (365 / (365 + j ) ) * beta *count
     else:
+        #print(w.infected)
+
         if step < 75:
-            return int((r0_lockdown*w.infected - w.infected)*beta)
-        return int((r0_post_lockdown*w.infected- w.infected)*beta)
+            return int(r0_lockdown*w.infected*beta)
+        return int(r0_post_lockdown* w.infected*beta)
 
  
     
 def transition_probability(contact,w):
     global vaccinated
     #tranistion from Susceptible
-    prob_s_i = contact / (w.susceptible +1)
+    prob_s_e = contact / (w.susceptible +1)
+    #print(prob_s_e)
+    prob_s_i = 0
     prob_s_r = gamma 
     if prob_s_i > 1:
         prob_s_i = 1 - gamma
         
-    prob_s_s = 1 - (prob_s_i + prob_s_r)
+    prob_s_s = 1 - (prob_s_e + prob_s_r)
     prob_s_d = 0
+    
+    prob_e_i = 1/sigma
+    prob_e_s = 0
+    prob_e_e = 0
+    prob_e_d = 0
+    prob_e_r = 0
+    
+    
+
     
     #transition from Infected
     prob_i_d = 0.003
+    prob_i_e = 0
     prob_i_r = 0.14
     prob_i_s = 0
     prob_i_i = 1 - (prob_i_d + prob_i_r)
     
 
     #transition from Recovered only to Suspectible
-    prob_r_s = gammaOne * (w.recovered - vaccinated)/(w.recovered + 1)
+    prob_r_s = 0.005
     prob_r_r = 1 - prob_r_s
     prob_r_i = 0
     prob_r_d = 0
+    prob_r_e = 0
     
     #All probabbility from D state are 0 except D2D
     prob_d_d = 1
-    prob_d_i = prob_d_r = prob_d_s = 0
+    prob_d_i = prob_d_r = prob_d_s = prob_d_e = 0
     
     ## Build transition probability matrix
-    P = np.matrix([[prob_s_s,prob_s_i,prob_s_d,prob_s_r],
-                   [prob_i_s,prob_i_i,prob_i_d,prob_i_r],
-                   [0.,0.,1.0,0.],
-                   [prob_r_s,0.,0.,prob_r_r]])
+    P = np.matrix([[prob_s_s,prob_s_e,prob_s_i,prob_s_d,prob_s_r],
+                   [prob_e_s,prob_e_e,prob_e_i,prob_e_d,prob_e_r],
+                   [prob_i_s,prob_i_e,prob_i_i,prob_i_d,prob_i_r],
+                   [0.,0.,0.,1.0,0.],
+                   [prob_r_s,0.,0.,0.,prob_r_r]])
     vaccinated = vaccinated + prob_s_r * w.susceptible
 
     return P
@@ -142,6 +167,7 @@ def iteration(responseFactor):
 
     plot_data = []
     for step in range(days):
+        print(step)
         for i in range(numDistricts):
             ward_infected_data = []
             #contact = contact_rate(wards[i],step)
@@ -154,7 +180,7 @@ def iteration(responseFactor):
                 if i != j:
                     break
                     
-          #  if i != (numWards -1):
+          #  if i != (numDistricts -1):
            #      migrate_ward(wards[i],wards[i+1],step)
             #else:
              #   migrate_ward(wards[i],wards[0],step)
@@ -172,9 +198,6 @@ def iteration(responseFactor):
         
     plot_data = np.array(plot_data)
     
-
-
-    
     for i in range(numDistricts):
         plt.figure(1)
         plt.plot(plot_data[:, i], label= labels[i])
@@ -183,31 +206,33 @@ def iteration(responseFactor):
         plt.ylabel('Infected Population per ward')
     
     city_sum = []
-    city_sum_factor15 = []
     for i in range(days):
         city_sum.append(sum(plot_data[i]))
-        city_sum_factor15.append(int(city_sum[i]/15))
-        
-    
         
     plt.figure(2)
-    plt.plot(city_sum,label = "Pune City Numbers for reponse " + str(responseFactor))
+    plt.plot(city_sum,label = "Maharashtra for reponse " + str(responseFactor))
     plt.legend()
     plt.xlabel('Time - Iteration')
-    plt.ylabel('Pune City Infections')
+    plt.ylabel('Maharashtra Infections')
     plt.show()
-    
-    plt.figure(3)
-    plt.plot(city_sum_factor15,label = "Pune City Numbers for reponse " + str(responseFactor))
-    plt.legend()
-    plt.xlabel('Time - Iteration')
-    plt.ylabel('Pune City Infections')
-    plt.show()
-    
-    
-    
     
     
 if __name__== "__main__":
     for i in range(9,10):
         iteration(i)
+  
+    
+    
+    
+   
+
+        
+    
+
+
+
+
+
+        
+           
+    

@@ -84,7 +84,7 @@ def migrate_ward(ward1 ,ward2,step):
 def contact_rate(w,step,responseFactor):
     if mcmc:
         count = 0
-        print(w.infected)
+        #print(w.infected)
 
         #infected = int(beta * infected)
         q = random.randint(0,1)
@@ -99,7 +99,7 @@ def contact_rate(w,step,responseFactor):
             j = step*responseFactor
         return  (365 / (365 + j ) ) * beta *count
     else:
-        print(w.infected)
+        #print(w.infected)
 
         if step < 75:
             return int(r0_lockdown*w.infected*beta)
@@ -111,7 +111,7 @@ def transition_probability(contact,w):
     global vaccinated
     #tranistion from Susceptible
     prob_s_e = contact / (w.susceptible +1)
-    print(prob_s_e)
+    #print(prob_s_e)
     prob_s_i = 0
     prob_s_r = gamma 
     if prob_s_i > 1:
@@ -138,7 +138,8 @@ def transition_probability(contact,w):
     
 
     #transition from Recovered only to Suspectible
-    prob_r_s = gammaOne * (w.recovered - vaccinated)/(w.recovered + 1)
+    #prob_r_s = gammaOne * (w.recovered - vaccinated)/(w.recovered + 1)
+    prob_r_s = 0.005
     prob_r_r = 1 - prob_r_s
     prob_r_i = 0
     prob_r_d = 0
@@ -218,7 +219,7 @@ def iteration(responseFactor):
     
     
 if __name__== "__main__":
-    for i in range(9,10):
+    for i in range(9,15):
         iteration(i)
   
     
