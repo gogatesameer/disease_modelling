@@ -18,8 +18,8 @@ S = N - 3
 I = 3
 R = 0
 D = 0
-betaOne = 3 # infection rate
-beta = 0.175 # Probability of Infection , Considering Quarantine , people measures
+betaOne = 4 # infection rate
+beta = 0.75 # Probability of Infection , Considering Quarantine , people measures
 gamma = 0.0 # recovery rate  - Vaccination
 gammaOne = 0.00 ## Recovered to Susceptible
 vaccinated = 0
@@ -29,7 +29,7 @@ numDistricts = 35
 r0_lockdown = 2
 r0_post_lockdown = 1.4
 mcmc = 1
-days = 400
+days = 50
 
 labels = ['Thane','Pune','Mumbai Suburban','Nashik','Nagpur','Ahmadnagar','Solapur','Jalgaon','Kolhapur','Aurangabad','Nanded','Mumbai City','Satara','Amravati','Sangli','Yavatmal','Raigarh','Buldana','Bid','Latur','Chandrapur','Dhule','Jalna','Parbhani','Akola','Osmanabad','Nandurbar','Ratnagiri','Gondiya','Wardha','Bhandara','Washim','Hingoli','Gadchiroli','Sindhudurg']
 
@@ -87,6 +87,8 @@ def contact_rate(w,step,responseFactor):
             j = 75*responseFactor
         else:
             j = step*responseFactor
+        if count > 0:
+            print( count,j,(365.0 / (365 + j ) ) * beta *count)
         return  (365 / (365 + j ) ) * beta *count
     else:
         if step < 75:
@@ -108,7 +110,7 @@ def transition_probability(contact,w):
     
     #transition from Infected
     prob_i_d = 0.003
-    prob_i_r = 0.14
+    prob_i_r = 0.1
     prob_i_s = 0
     prob_i_i = 1 - (prob_i_d + prob_i_r)
     
@@ -136,12 +138,14 @@ def iteration(responseFactor):
     wards = []
     for i in range(numDistricts):
         wards.append(district(population[i],0))
-    wards[3].infected = 10
-    wards[5].infected = 10
+    wards[3].infected = 1000
+    wards[5].infected = 1000
+    wards[1].infected = 1000
     
 
     plot_data = []
     for step in range(days):
+        #print(step)
         for i in range(numDistricts):
             ward_infected_data = []
             #contact = contact_rate(wards[i],step)
@@ -194,14 +198,14 @@ def iteration(responseFactor):
     plt.plot(city_sum,label = "Pune City Numbers for reponse " + str(responseFactor))
     plt.legend()
     plt.xlabel('Time - Iteration')
-    plt.ylabel('Pune City Infections')
+    plt.ylabel('Maharashtra Infections')
     plt.show()
     
     plt.figure(3)
-    plt.plot(city_sum_factor15,label = "Pune City Numbers for reponse " + str(responseFactor))
+    plt.plot(city_sum_factor15,label = "Maharahstra Numbers for reponse " + str(responseFactor))
     plt.legend()
     plt.xlabel('Time - Iteration')
-    plt.ylabel('Pune City Infections')
+    plt.ylabel('Maharashtra Infections')
     plt.show()
     
     
@@ -209,5 +213,5 @@ def iteration(responseFactor):
     
     
 if __name__== "__main__":
-    for i in range(9,10):
+    for i in range(1,2):
         iteration(i)

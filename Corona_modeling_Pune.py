@@ -1,5 +1,3 @@
-
-
 # -*- coding: utf-8 -*-
 """
 Created on Sat Nov 16 18:40:24 2019
@@ -19,10 +17,11 @@ S = N - 4
 I = 4
 R = 0
 D = 0
-betaOne = 3 # infection rate
-beta = 0.28  # Probability of Infection , Considering Quarantine , people measures
+betaOne = 2 # infection rate
+beta = 0.25  # Probability of Infection , Considering Quarantine , people measures
+betaLockdown = 0.2
 gamma = 0.0 # recovery rate  - Vaccination
-gammaOne = 0.00 ## Recovered to Susceptible
+gammaOne = 0.005 ## Recovered to Susceptible
 vaccinated = 0
 numWards = 11
 #responseFactor = 9
@@ -30,14 +29,16 @@ numWards = 11
 r0_lockdown = 2
 r0_post_lockdown = 1.4
 mcmc = 1
-days = 300
-sigma = 1.5
+days = 400
+sigma = 3
 
 labels = [ 'KhadakWasla','Parvati' ,'Kothrud','Kasba Peth','Camp','Wadgaon Sheri','Hadpsar',
            'Bhosari','Pimpri','Chinchwad','Shivaji Nagar']
 
 population =[584522,425206,485829,348868,349744,548397,605110,529521,424425,622176,366840]
 
+lockdownInterval = [[10,90],[400,430]]
+lockdown = False
 
 class ward(object):
     def __init__(self,total=500000,infected=0):
@@ -62,9 +63,9 @@ class ward(object):
 
 def migrate_ward(ward1 ,ward2,step):
     if step < 75:
-        movements = 5000
+        movements = 500
     else:
-        movements = 5000 + step*100
+        movements = 500 + step*50
     for i in range(movements):
         j = random.randint(1,ward1.total)
         if j < ward1.exposed:
@@ -82,28 +83,38 @@ def migrate_ward(ward1 ,ward2,step):
                 
        
 def contact_rate(w,step,responseFactor):
+    global lockdown , lockdownInterval,betaOne
     if mcmc:
         count = 0
-        print(w.infected)
-
+        #print(w.infected)
         #infected = int(beta * infected)
-        q = random.randint(0,1)
-        for j in range(int(w.infected)):
-            for i in range(betaOne-q):
+        q = random.randint(0,2)
+        #print(w.exposed)
+        for j in range(int(w.exposed)):
+            for i in range(betaOne):
                 p = random.randint(1,w.total)
                 if p <= w.susceptible:
                     count = count + 1
-        if step > 75:
-            j = 75*responseFactor
+#      if step > 75:
+#           j = 75*responseFactor
+ #       else:
+  #          j = step*responseFactor
+   #     return  (365.0 / (365 + j ) ) * beta *count
+        for i in range(len(lockdownInterval)):
+            if step in range(lockdownInterval[i][0],lockdownInterval[i][1]):
+                lockdown = True
+            
+        if lockdown == True:
+            return  betaLockdown * count * responseFactor/100
         else:
-            j = step*responseFactor
-        return  (365 / (365 + j ) ) * beta *count
+            return  beta * count * responseFactor/100
+                
     else:
-        print(w.infected)
+        #print(w.infected)
 
         if step < 75:
-            return int(r0_lockdown*w.infected*beta)
-        return int(r0_post_lockdown* w.infected*beta)
+            return int(r0_lockdown*w.exposed*betaLockdown)
+        return int(r0_post_lockdown* w.exposed*beta)
 
  
     
@@ -111,7 +122,7 @@ def transition_probability(contact,w):
     global vaccinated
     #tranistion from Susceptible
     prob_s_e = contact / (w.susceptible +1)
-    print(prob_s_e)
+    #print(prob_s_e)
     prob_s_i = 0
     prob_s_r = gamma 
     if prob_s_i > 1:
@@ -120,17 +131,17 @@ def transition_probability(contact,w):
     prob_s_s = 1 - (prob_s_e + prob_s_r)
     prob_s_d = 0
     
-    prob_e_i = 1/sigma
+    prob_e_i = 1.0/sigma
     prob_e_s = 0
-    prob_e_e = 0
+    prob_e_e = 1 - prob_e_i - 0.005
     prob_e_d = 0
-    prob_e_r = 0
+    prob_e_r = 0.005
     
     
 
     
     #transition from Infected
-    prob_i_d = 0.003
+    prob_i_d = 0.02
     prob_i_e = 0
     prob_i_r = 0.14
     prob_i_s = 0
@@ -138,7 +149,7 @@ def transition_probability(contact,w):
     
 
     #transition from Recovered only to Suspectible
-    prob_r_s = gammaOne * (w.recovered - vaccinated)/(w.recovered + 1)
+    prob_r_s = gammaOne
     prob_r_r = 1 - prob_r_s
     prob_r_i = 0
     prob_r_d = 0
@@ -162,8 +173,8 @@ def iteration(responseFactor):
     wards = []
     for i in range(numWards):
         wards.append(ward(population[i],0))
-    wards[3].infected = 10
-    wards[5].infected = 10
+    wards[3].exposed = 50
+    wards[5].exposed = 50
     
 
     plot_data = []
@@ -187,7 +198,7 @@ def iteration(responseFactor):
             migrate_ward(wards[i],wards[j],step)
                     
         for k in range(numWards):
-            ward_infected_data.append(wards[k].get_ward_values()[1])
+            ward_infected_data.append(wards[k].get_ward_values()[2])
             #print(wards[k].get_ward_values())
             
         #print("######################################################")
@@ -218,7 +229,7 @@ def iteration(responseFactor):
     
     
 if __name__== "__main__":
-    for i in range(9,10):
+    for i in range(95,96):
         iteration(i)
   
     
