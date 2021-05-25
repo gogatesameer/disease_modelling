@@ -88,10 +88,10 @@ def contact_rate(w,step,responseFactor):
         count = 0
         #print(w.infected)
         #infected = int(beta * infected)
-        q = random.randint(0,2)
+        q = random.randint(0,1)
         #print(w.exposed)
         for j in range(int(w.exposed)):
-            for i in range(betaOne):
+            for i in range(betaOne-1):
                 p = random.randint(1,w.total)
                 if p <= w.susceptible:
                     count = count + 1
