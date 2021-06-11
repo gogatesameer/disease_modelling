@@ -18,10 +18,10 @@ I = 4
 R = 0
 D = 0
 betaOne = 2 # infection rate
-beta = 0.25  # Probability of Infection , Considering Quarantine , people measures
-betaLockdown = 0.2
-gamma = 0.0 # recovery rate  - Vaccination
-gammaOne = 0.005 ## Recovered to Susceptible
+beta = 0.3  # Probability of Infection , Considering Quarantine , people measures
+betaLockdown = 0.25
+gamma = 0.001 # recovery rate  - Vaccination
+gammaOne = 0.001## Recovered to Susceptible
 vaccinated = 0
 numWards = 11
 #responseFactor = 9
@@ -37,7 +37,7 @@ labels = [ 'KhadakWasla','Parvati' ,'Kothrud','Kasba Peth','Camp','Wadgaon Sheri
 
 population =[584522,425206,485829,348868,349744,548397,605110,529521,424425,622176,366840]
 
-lockdownInterval = [[10,90],[400,430]]
+lockdownInterval = [[30,90],[400,430]]
 lockdown = False
 
 class ward(object):
@@ -88,10 +88,10 @@ def contact_rate(w,step,responseFactor):
         count = 0
         #print(w.infected)
         #infected = int(beta * infected)
-        q = random.randint(0,1)
+        q = random.randint(-2,2)
         #print(w.exposed)
-        for j in range(int(w.exposed)):
-            for i in range(betaOne-1):
+        for j in range(int(w.exposed+q)):
+            for i in range(betaOne):
                 p = random.randint(1,w.total)
                 if p <= w.susceptible:
                     count = count + 1
@@ -214,14 +214,14 @@ def iteration(responseFactor):
         plt.plot(plot_data[:, i], label= labels[i])
         plt.legend()
         plt.xlabel('Time')
-        plt.ylabel('Infected Population per ward')
+        plt.ylabel('Infected Population per assembly segment')
     
     city_sum = []
     for i in range(days):
         city_sum.append(sum(plot_data[i]))
         
     plt.figure(2)
-    plt.plot(city_sum,label = "Pune City Numbers for reponse " + str(responseFactor))
+    plt.plot(city_sum,label = "Pune City Numbers for beta & betaLockdown " + str(beta) + str(betaLockdown))
     plt.legend()
     plt.xlabel('Time - Iteration')
     plt.ylabel('Pune City Infections')
@@ -229,7 +229,7 @@ def iteration(responseFactor):
     
     
 if __name__== "__main__":
-    for i in range(95,96):
+    for i in range(94,95):
         iteration(i)
   
     

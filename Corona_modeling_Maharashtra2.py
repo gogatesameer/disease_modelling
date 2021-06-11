@@ -19,10 +19,11 @@ S = N - 4
 I = 4
 R = 0
 D = 0
-betaOne = 3 # infection rate
-beta = 0.28  # Probability of Infection , Considering Quarantine , people measures
+betaOne = 2 # infection rate
+beta = 0.32  # Probability of Infection , Considering Quarantine , people measures
+betaLockdown = 0.27
 gamma = 0.0 # recovery rate  - Vaccination
-gammaOne = 0.00 ## Recovered to Susceptible
+gammaOne = 0.01 ## Recovered to Susceptible
 vaccinated = 0
 numDistricts = 35
 #responseFactor = 9
@@ -31,12 +32,15 @@ r0_lockdown = 2
 r0_post_lockdown = 1.4
 mcmc = 1
 days = 300
-sigma = 1.5
+sigma = 3
 
 labels = ['Thane','Pune','Mumbai Suburban','Nashik','Nagpur','Ahmadnagar','Solapur','Jalgaon','Kolhapur','Aurangabad','Nanded','Mumbai City','Satara','Amravati','Sangli','Yavatmal','Raigarh','Buldana','Bid','Latur','Chandrapur','Dhule','Jalna','Parbhani','Akola','Osmanabad','Nandurbar','Ratnagiri','Gondiya','Wardha','Bhandara','Washim','Hingoli','Gadchiroli','Sindhudurg']
 
 population =[11060148,9429408,9356962,6107187,4653570,4543159,4317756,4229917,3876001,3701282,3361292,3085411,3003741,2888445,2822143,2772348,2634200,2586258,2585049,2454196,2204307,2050862,1959046,1836086,1813906,1657576,1648295,1615069,1322507,1300774,1200334,1197160,1177345,1072942,849651]
 
+
+lockdownInterval = [[10,90],[400,430]]
+lockdown = False
 
 class ward(object):
     def __init__(self,total=500000,infected=0):
@@ -61,9 +65,9 @@ class ward(object):
 
 def migrate_ward(ward1 ,ward2,step):
     if step < 75:
-        movements = 5000
+        movements = int(0.001 * ward1.total)
     else:
-        movements = 5000 + step*100
+        movements = int(0.00175 * ward1.total)
     for i in range(movements):
         j = random.randint(1,ward1.total)
         if j < ward1.exposed:
@@ -81,28 +85,38 @@ def migrate_ward(ward1 ,ward2,step):
                 
        
 def contact_rate(w,step,responseFactor):
+    global lockdown , lockdownInterval,betaOne
     if mcmc:
         count = 0
         #print(w.infected)
-
         #infected = int(beta * infected)
-        q = random.randint(0,1)
-        for j in range(int(w.infected)):
-            for i in range(betaOne-q):
+        q = random.randint(-2,2)
+        #print(w.exposed)
+        for j in range(int(w.exposed+q)):
+            for i in range(betaOne):
                 p = random.randint(1,w.total)
                 if p <= w.susceptible:
                     count = count + 1
-        if step > 75:
-            j = 75*responseFactor
+#      if step > 75:
+#           j = 75*responseFactor
+ #       else:
+  #          j = step*responseFactor
+   #     return  (365.0 / (365 + j ) ) * beta *count
+        for i in range(len(lockdownInterval)):
+            if step in range(lockdownInterval[i][0],lockdownInterval[i][1]):
+                lockdown = True
+            
+        if lockdown == True:
+            return  betaLockdown * count * responseFactor/100
         else:
-            j = step*responseFactor
-        return  (365 / (365 + j ) ) * beta *count
+            return  beta * count * responseFactor/100
+                
     else:
         #print(w.infected)
 
         if step < 75:
-            return int(r0_lockdown*w.infected*beta)
-        return int(r0_post_lockdown* w.infected*beta)
+            return int(r0_lockdown*w.exposed*betaLockdown)
+        return int(r0_post_lockdown* w.exposed*beta)
 
  
     
@@ -119,17 +133,17 @@ def transition_probability(contact,w):
     prob_s_s = 1 - (prob_s_e + prob_s_r)
     prob_s_d = 0
     
-    prob_e_i = 1/sigma
+    prob_e_i = 1.0/sigma
     prob_e_s = 0
-    prob_e_e = 0
+    prob_e_e = 1 - prob_e_i - 0.005
     prob_e_d = 0
-    prob_e_r = 0
+    prob_e_r = 0.005
     
     
 
     
     #transition from Infected
-    prob_i_d = 0.003
+    prob_i_d = 0.02
     prob_i_e = 0
     prob_i_r = 0.14
     prob_i_s = 0
@@ -137,7 +151,7 @@ def transition_probability(contact,w):
     
 
     #transition from Recovered only to Suspectible
-    prob_r_s = 0.005
+    prob_r_s = gammaOne
     prob_r_r = 1 - prob_r_s
     prob_r_i = 0
     prob_r_d = 0
@@ -161,13 +175,13 @@ def iteration(responseFactor):
     wards = []
     for i in range(numDistricts):
         wards.append(ward(population[i],0))
-    wards[3].infected = 10
-    wards[5].infected = 10
+    wards[1].exposed = 500
+    wards[2].exposed = 500
+    wards[0].exposed = 500
     
 
     plot_data = []
     for step in range(days):
-        print(step)
         for i in range(numDistricts):
             ward_infected_data = []
             #contact = contact_rate(wards[i],step)
@@ -176,18 +190,18 @@ def iteration(responseFactor):
             result = wards[i].get_ward_values() * P
             wards[i].set_ward_values(result.tolist()[0])
             while True:
-                j = random.randint(0,10)
+                j = random.randint(0,34)
                 if i != j:
                     break
                     
-          #  if i != (numDistricts -1):
+          #  if i != (numWards -1):
            #      migrate_ward(wards[i],wards[i+1],step)
             #else:
              #   migrate_ward(wards[i],wards[0],step)
             migrate_ward(wards[i],wards[j],step)
                     
         for k in range(numDistricts):
-            ward_infected_data.append(wards[k].get_ward_values()[1])
+            ward_infected_data.append(wards[k].get_ward_values()[2])
             #print(wards[k].get_ward_values())
             
         #print("######################################################")
@@ -203,14 +217,14 @@ def iteration(responseFactor):
         plt.plot(plot_data[:, i], label= labels[i])
         plt.legend()
         plt.xlabel('Time')
-        plt.ylabel('Infected Population per ward')
+        plt.ylabel('Infected Population per district')
     
     city_sum = []
     for i in range(days):
         city_sum.append(sum(plot_data[i]))
         
     plt.figure(2)
-    plt.plot(city_sum,label = "Maharashtra for reponse " + str(responseFactor))
+    plt.plot(city_sum,label = "Maharashtra Numbers for beta " + str(beta) + str(betaLockdown))
     plt.legend()
     plt.xlabel('Time - Iteration')
     plt.ylabel('Maharashtra Infections')
@@ -218,21 +232,5 @@ def iteration(responseFactor):
     
     
 if __name__== "__main__":
-    for i in range(9,10):
+    for i in range(94,95):
         iteration(i)
-  
-    
-    
-    
-   
-
-        
-    
-
-
-
-
-
-        
-           
-    
